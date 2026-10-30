@@ -626,6 +626,17 @@ select option {
   flex-direction: column;
   gap: 8px;
 }
+.camp-image {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+.camp-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .camp-title {
   font-size: 1.1rem;
   font-weight: 700;
@@ -635,6 +646,7 @@ select option {
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
 .camp-facility {
   font-size: 0.8rem;
   color: var(--accent-cyan);

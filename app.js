@@ -776,53 +776,230 @@ function updateWeatherMap(
     `${travelPlace ? `${travelPlace} · ` : ""}${locationName} · ${date} · ${temperature ?? "--"}°C · ${weather.desc}`;
 }
 
-function searchGoCampingApi() {
+async function searchGoCampingApi() {
   const query = document.getElementById("campingSearchInput").value.trim();
   const container = document.getElementById("campingApiList");
   const status = document.getElementById("campingStatus");
+  const searchButton = document.getElementById("campingSearchButton");
   if (!container || !status || !query) {
     return;
   }
 
-  status.textContent = "캠핑장 미리보기 예시입니다. 실제 캠핑장 정보와 예약 가능 여부는 제휴 사이트에서 확인해 주세요.";
-  const sampleCampings = [
-    {
-      name: `${query} 캠핑장 검색`,
-      addr: "검색 지역 예시 · 방문 전 실제 주소 확인",
-      sbrs: "캠핑 사이트에서 운영 정보 확인",
-    },
-    {
-      name: `${query} 오토캠핑`,
-      addr: "검색어 기반 추천 카테고리",
-      sbrs: "전기 · 온수 · 편의시설 여부 확인",
-    },
-    {
-      name: `${query} 자연 캠핑`,
-      addr: "주변 자연 캠핑 장소 검색",
-      sbrs: "운영 일정과 이용 조건 확인",
-    },
-  ];
-
+  const serviceKey = window.WEATH_WAY_CONFIG?.goCampingServiceKey?.trim();
   container.replaceChildren();
-  sampleCampings.forEach((camp, index) => {
-    const card = document.createElement("article");
-    card.className = "camp-card";
-    const title = document.createElement("h4");
-    title.className = "camp-title";
-    title.textContent = `⛺ ${camp.name}`;
-    const address = document.createElement("p");
-    address.className = "camp-addr";
-    address.textContent = camp.addr;
-    const facilities = document.createElement("p");
-    facilities.className = "camp-facility";
-    facilities.textContent = `확인 항목: ${camp.sbrs}`;
-    const link = document.createElement("a");
-    link.className = "thankyou-btn";
-    link.href = `https://m.mism.co.kr/search?keyword=${encodeURIComponent(query)}`;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = index === 0 ? "예약 사이트에서 검색 ↗" : "검색어로 캠핑장 찾기 ↗";
-    card.append(title, address, facilities, link);
-    container.append(card);
-  });
+  if (!serviceKey) {
+    status.textContent =
+      "GoCamping 인증키가 설정되지 않았습니다. api-config.js에 발급받은 일반 인증키(Decoding)를 입력한 뒤 페이지를 새로고침해 주세요.";
+    return;
+  }
+
+  searchButton.disabled = true;
+  status.textContent = "한국관광공사 GoCamping에서 캠핑장 정보를 검색하는 중입니다...";
+
+  try {
+    const requestUrl = new URL(
+      "https://apis.data.go.kr/B551011/GoCamping/searchList",
+    );
+    const requestParams = {
+      serviceKey,
+      numOfRows: "12",
+      pageNo: "1",
+      MobileOS: "ETC",
+      MobileApp: "WEATHWAY",
+      _type: "json",
+      keyword: query,
+    };
+    requestUrl.search = new URLSearchParams(requestParams).toString();
+
+    const response = await fetch(requestUrl);
+    if (!response.ok) {
+      throw new Error(`캠핑장 API 요청에 실패했습니다 (HTTP ${response.status}).`);
+    }
+
+    const data = await response.json();
+    const apiResponse = data.response;
+    const resultCode = apiResponse?.header?.resultCode;
+    if (resultCode && resultCode !== "0000") {
+      throw new Error(
+        `GoCamping API 오류 (${resultCode}): ${apiResponse.header.resultMsg || "응답 오류"}`,
+      );
+    }
+
+    const directItems = apiResponse?.body?.items?.item;
+    const campgrounds = new Map(
+      (Array.isArray(directItems) ? directItems : directItems ? [directItems] : [])
+        .map((item) => [item.contentId || `${item.facltNm}|${item.addr1}`, item]),
+    );
+    let regionMatchedCount = 0;
+
+    try {
+      const regionUrl = new URL("https://nominatim.openstreetmap.org/search");
+      regionUrl.search = new URLSearchParams({
+        format: "jsonv2",
+        limit: "1",
+        countrycodes: "kr",
+        q: `${query} 대한민국`,
+      }).toString();
+      const regionResponse = await fetch(regionUrl, {
+        headers: { "Accept-Language": "ko,en" },
+      });
+      if (!regionResponse.ok) {
+        throw new Error(`지역 검색에 실패했습니다 (HTTP ${regionResponse.status}).`);
+      }
+
+      const locations = await regionResponse.json();
+      const latitude = Number(locations[0]?.lat);
+      const longitude = Number(locations[0]?.lon);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        const nearbyUrl = new URL(
+          "https://apis.data.go.kr/B551011/GoCamping/locationBasedList",
+        );
+        nearbyUrl.search = new URLSearchParams({
+          ...requestParams,
+          mapX: String(longitude),
+          mapY: String(latitude),
+          radius: "20000",
+        }).toString();
+        nearbyUrl.searchParams.delete("keyword");
+        const nearbyResponse = await fetch(nearbyUrl);
+        if (!nearbyResponse.ok) {
+          throw new Error(
+            `지역 캠핑장 검색에 실패했습니다 (HTTP ${nearbyResponse.status}).`,
+          );
+        }
+
+        const nearbyData = await nearbyResponse.json();
+        const nearbyApiResponse = nearbyData.response;
+        const nearbyResultCode = nearbyApiResponse?.header?.resultCode;
+        if (nearbyResultCode && nearbyResultCode !== "0000") {
+          throw new Error(
+            `GoCamping 지역 검색 오류 (${nearbyResultCode}): ${nearbyApiResponse.header.resultMsg || "응답 오류"}`,
+          );
+        }
+
+        const nearbyItems = nearbyApiResponse?.body?.items?.item;
+        const nearbyCampgrounds = Array.isArray(nearbyItems)
+          ? nearbyItems
+          : nearbyItems
+            ? [nearbyItems]
+            : [];
+        nearbyCampgrounds.forEach((campground) => {
+          const id = campground.contentId || `${campground.facltNm}|${campground.addr1}`;
+          if (!campgrounds.has(id)) {
+            campgrounds.set(id, campground);
+            regionMatchedCount += 1;
+          }
+        });
+      }
+    } catch (regionError) {
+      console.warn("주변 지역 캠핑장 검색에 실패했습니다.", regionError);
+    }
+
+    const results = [...campgrounds.values()];
+    if (results.length === 0) {
+      status.textContent = `"${query}" 검색 결과가 없습니다. 다른 캠핑장 이름이나 지역으로 검색해 주세요.`;
+      return;
+    }
+
+    results.forEach((campground) => {
+      const card = document.createElement("article");
+      card.className = "camp-card";
+
+      if (campground.firstImageUrl) {
+        const image = document.createElement("img");
+        image.className = "camp-image";
+        image.src = campground.firstImageUrl;
+        image.alt = campground.facltNm
+          ? `${campground.facltNm} 대표 이미지`
+          : "캠핑장 대표 이미지";
+        image.loading = "lazy";
+        card.append(image);
+      }
+
+      const title = document.createElement("h4");
+      title.className = "camp-title";
+      title.textContent = campground.facltNm || "이름 미상 캠핑장";
+      card.append(title);
+
+      const address = document.createElement("p");
+      address.className = "camp-addr";
+      address.textContent = campground.addr1 || "주소 정보 없음";
+      card.append(address);
+
+      const details = [
+        campground.lineIntro || campground.intro,
+        campground.induty ? `업종: ${campground.induty}` : "",
+        campground.sbrsCl ? `편의시설: ${campground.sbrsCl}` : "",
+        campground.tel ? `전화: ${campground.tel}` : "",
+      ].filter(Boolean);
+      details.forEach((detail) => {
+        const text = document.createElement("p");
+        text.className = "camp-facility";
+        text.textContent = detail;
+        card.append(text);
+      });
+
+      const links = document.createElement("div");
+      links.className = "camp-links";
+      const homepage = getSafeExternalUrl(campground.homepage);
+      if (homepage) {
+        const homepageLink = document.createElement("a");
+        homepageLink.className = "thankyou-btn";
+        homepageLink.href = homepage;
+        homepageLink.target = "_blank";
+        homepageLink.rel = "noopener noreferrer";
+        homepageLink.textContent = "캠핑장 홈페이지";
+        links.append(homepageLink);
+      }
+
+      const latitude = Number(campground.mapY);
+      const longitude = Number(campground.mapX);
+      if (
+        campground.mapY &&
+        campground.mapX &&
+        Number.isFinite(latitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        Number.isFinite(longitude) &&
+        longitude >= -180 &&
+        longitude <= 180
+      ) {
+        const mapLink = document.createElement("a");
+        mapLink.className = "thankyou-btn";
+        mapLink.href = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=14/${latitude}/${longitude}`;
+        mapLink.target = "_blank";
+        mapLink.rel = "noopener noreferrer";
+        mapLink.textContent = "지도 보기";
+        links.append(mapLink);
+      }
+      if (links.childElementCount > 0) card.append(links);
+      container.append(card);
+    });
+
+    const directCount = Array.isArray(directItems)
+      ? directItems.length
+      : directItems
+        ? 1
+        : 0;
+    status.textContent = `캠핑장명 검색 ${directCount}곳, 지역 반경 20km 검색 ${regionMatchedCount}곳을 찾았습니다.`;
+  } catch (error) {
+    console.error("GoCamping 캠핑장 검색에 실패했습니다.", error);
+    status.textContent =
+      `${error.message} 인증키 상태와 API 사용 승인을 확인해 주세요. 브라우저에서 직접 호출할 때 CORS 정책으로 차단될 수도 있습니다.`;
+  } finally {
+    searchButton.disabled = false;
+  }
+}
+
+function getSafeExternalUrl(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.toString()
+      : "";
+  } catch (error) {
+    console.warn("올바르지 않은 외부 링크를 무시했습니다.");
+    return "";
+  }
 }

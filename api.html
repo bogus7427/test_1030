@@ -10,6 +10,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link rel="stylesheet" href="styles.css" />
+    <script src="api-config.js"></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -155,22 +156,22 @@
             "
           />
 
-          <!-- 고캠핑 API 캠핑장 검색 섹션 -->
+          <!-- GoCamping API camping search -->
           <div class="card-title">
             <i class="fa-solid fa-campground"></i>
-            <h3>캠핑장 검색 미리보기</h3>
+            <h3>캠핑장 검색</h3>
           </div>
           <p class="sponsor-desc">
-            아래 카드는 검색 흐름을 보여주는 예시입니다. 실제 캠핑장 목록을 연결하려면 한국관광공사 GoCamping API 인증키가 필요합니다.
+            캠핑장 이름을 검색하거나 지역명을 입력하면 해당 위치 반경 20km의 캠핑장을 찾아줍니다.
           </p>
 
           <form class="api-search-bar camping-search-bar" id="campingSearchForm">
             <div class="search-group grow">
-              <label for="campingSearchInput"><i class="fa-solid fa-magnifying-glass"></i> 캠핑장 이름 검색</label>
+              <label for="campingSearchInput"><i class="fa-solid fa-magnifying-glass"></i> 캠핑장 / 지역 검색</label>
               <input
                 type="text"
                 id="campingSearchInput"
-                placeholder="예: 대가야, 팔공산, 자라섬"
+                placeholder="예: 대가야, 고령군, 제주"
                 value="대가야"
                 maxlength="80"
                 required
