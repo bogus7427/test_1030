@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10172b" />
+    <title>WEATH WAY | 날씨 & 캠핑 검색</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <div class="app-container">
+      <header class="app-header">
+        <a class="logo" href="index.html">
+          <i class="fa-solid fa-campground"></i>
+          <span class="brand-lockup">
+            <strong>WEATH WAY</strong>
+            <small>날씨를 따라 떠나는 여정...</small>
+          </span>
+        </a>
+        <nav class="nav-tabs" aria-label="주요 메뉴">
+          <a href="index.html" class="nav-btn">
+            <i class="fa-solid fa-map-location-dot"></i> 내 장소 & 땡큐캠핑
+            (CRUD)
+          </a>
+          <a href="api.html" class="nav-btn active" aria-current="page">
+            <i class="fa-solid fa-cloud-sun-rain"></i> 캠핑장 & 날씨 정보 (API)
+          </a>
+        </nav>
+      </header>
+
+      <main class="page-content active">
+        <div class="glass-card">
+          <div class="card-title">
+            <i class="fa-solid fa-cloud-sun-rain"></i>
+            <h3>도시 날씨 조회 & 캠핑장 검색</h3>
+          </div>
+
+          <!-- 날씨 & 캠핑 API 검색 바 -->
+          <form class="api-search-bar weather-search-bar" id="weatherSearchForm">
+            <div class="search-group grow">
+              <label for="apiCityInput"><i class="fa-solid fa-location-dot"></i> 도시 / 지역</label>
+              <input
+                type="text"
+                id="apiCityInput"
+                placeholder="예: Daegu, Seoul, Jeju"
+                value="Daegu"
+                maxlength="80"
+                required
+              />
+            </div>
+            <div class="search-group">
+              <label for="apiDateInput"><i class="fa-regular fa-calendar-days"></i> 조회 날짜</label>
+              <input type="date" id="apiDateInput" required />
+            </div>
+            <button class="btn btn-accent" id="weatherSearchButton" type="submit">
+              <i class="fa-solid fa-magnifying-glass"></i> 날씨 조회
+            </button>
+          </form>
+          <p class="api-status" id="weatherStatus" role="status" aria-live="polite"></p>
+
+          <!-- 날씨 API 결과 -->
+          <div class="api-result-wrapper">
+            <div class="api-summary-grid">
+              <div class="summary-card">
+                <div class="s-icon" id="apiWeatherIcon">
+                  <i class="fa-solid fa-sun"></i>
+                </div>
+                <div class="s-info">
+                  <div class="s-location" id="apiLocationText">
+                    Daegu, South Korea
+                  </div>
+                  <div class="s-date" id="apiDateText">--</div>
+                  <div class="s-temp" id="apiTempText">--°C</div>
+                  <div class="s-desc" id="apiDescText">--</div>
+                </div>
+              </div>
+
+              <div class="metrics-grid">
+                <div class="metric-item">
+                  <i class="fa-solid fa-wind"></i>
+                  <div class="m-val" id="apiWindText">-- km/h</div>
+                  <div class="m-lbl">풍속 (Wind)</div>
+                </div>
+                <div class="metric-item">
+                  <i class="fa-solid fa-droplet"></i>
+                  <div class="m-val" id="apiHumidityText">-- %</div>
+                  <div class="m-lbl">습도 (Humidity)</div>
+                </div>
+                <div class="metric-item">
+                  <i class="fa-solid fa-compass"></i>
+                  <div class="m-val" id="apiCoordsText">35.87, 128.60</div>
+                  <div class="m-lbl">좌표 (Lat, Lon)</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hourly-section">
+              <h4>
+                <i class="fa-regular fa-clock"></i> 시간대별 예보 (Open-Meteo
+                API)
+              </h4>
+              <div class="hourly-scroll-container" id="hourlyContainer"></div>
+            </div>
+
+            <section class="weekly-section" aria-labelledby="weekly-title">
+              <h4 id="weekly-title"><i class="fa-solid fa-calendar-week" aria-hidden="true"></i> 7일 날씨 예보 (Open-Meteo API)</h4>
+              <div class="weekly-forecast-grid" id="weeklyForecastContainer" aria-live="polite"></div>
+            </section>
+
+            <section class="weather-map-section" aria-labelledby="weather-map-title">
+              <div class="weather-map-heading">
+                <div>
+                  <h4 id="weather-map-title"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> 검색 지역 날씨 지도</h4>
+                  <p>지도에서 검색한 도시의 위치와 날씨를 확인해 보세요.</p>
+                </div>
+                <a
+                  class="map-external-link"
+                  id="weatherMapLink"
+                  href="https://www.openstreetmap.org/?mlat=35.8714&amp;mlon=128.6014#map=11/35.8714/128.6014"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  지도 크게 보기 <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                </a>
+              </div>
+              <div class="weather-map-frame">
+                <iframe
+                  id="weatherMap"
+                  title="검색 지역의 위치 지도"
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=128.48%2C35.79%2C128.73%2C35.95&amp;layer=mapnik&amp;marker=35.8714%2C128.6014"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                ></iframe>
+              </div>
+              <div class="weather-map-caption" aria-live="polite">
+                <span class="map-weather-icon" id="mapWeatherIcon"><i class="fa-solid fa-cloud-sun" aria-hidden="true"></i></span>
+                <span id="mapWeatherSummary">대구 · 도시를 검색하면 해당 지역 날씨가 표시됩니다.</span>
+              </div>
+            </section>
+          </div>
+
+          <hr
+            style="
+              margin: 30px 0;
+              border: none;
+              border-top: 1px dashed var(--glass-border);
+            "
+          />
+
+          <!-- 고캠핑 API 캠핑장 검색 섹션 -->
+          <div class="card-title">
+            <i class="fa-solid fa-campground"></i>
+            <h3>캠핑장 검색 미리보기</h3>
+          </div>
+          <p class="sponsor-desc">
+            아래 카드는 검색 흐름을 보여주는 예시입니다. 실제 캠핑장 목록을 연결하려면 한국관광공사 GoCamping API 인증키가 필요합니다.
+          </p>
+
+          <form class="api-search-bar camping-search-bar" id="campingSearchForm">
+            <div class="search-group grow">
+              <label for="campingSearchInput"><i class="fa-solid fa-magnifying-glass"></i> 캠핑장 이름 검색</label>
+              <input
+                type="text"
+                id="campingSearchInput"
+                placeholder="예: 대가야, 팔공산, 자라섬"
+                value="대가야"
+                maxlength="80"
+                required
+              />
+            </div>
+            <button class="btn btn-primary" id="campingSearchButton" type="submit">
+              <i class="fa-solid fa-tree"></i> 캠핑장 검색
+            </button>
+          </form>
+
+          <p class="api-status" id="campingStatus" role="status" aria-live="polite"></p>
+
+          <div class="camping-api-grid" id="campingApiList">
+            <!-- GoCamping API 데이터 동적 출력 -->
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+  </body>
+</html>

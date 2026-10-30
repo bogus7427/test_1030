@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10172b" />
+    <title>WEATH WAY | 날씨를 따라 떠나는 여정</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="bg-orb orb-1" aria-hidden="true"></div>
+    <div class="bg-orb orb-2" aria-hidden="true"></div>
+
+    <div class="app-container">
+      <header class="app-header">
+        <a class="logo" href="index.html">
+          <i class="fa-solid fa-campground" aria-hidden="true"></i>
+          <span class="brand-lockup">
+            <strong>WEATH WAY</strong>
+            <small>날씨를 따라 떠나는 여정...</small>
+          </span>
+        </a>
+        <nav class="nav-tabs" aria-label="주요 메뉴">
+          <a href="index.html" class="nav-btn active" aria-current="page">
+            <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> 내
+            여행 기록
+          </a>
+          <a href="api.html" class="nav-btn">
+            <i class="fa-solid fa-cloud-sun-rain" aria-hidden="true"></i> 날씨 &
+            캠핑 검색
+          </a>
+        </nav>
+      </header>
+
+      <main>
+        <div class="grid-2col">
+          <section class="glass-card" aria-labelledby="formModeTitle">
+            <div class="card-title">
+              <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i>
+              <h2 id="formModeTitle">여행 장소 등록</h2>
+            </div>
+
+            <form id="placeForm" class="crud-form">
+              <input type="hidden" id="editId" value="" />
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="countryInput"
+                    ><i
+                      class="fa-solid fa-earth-americas"
+                      aria-hidden="true"
+                    ></i>
+                    국가</label
+                  >
+                  <input
+                    type="text"
+                    id="countryInput"
+                    maxlength="80"
+                    placeholder="예: 대한민국"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="cityInput"
+                    ><i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                    도시 / 지역</label
+                  >
+                  <input
+                    type="text"
+                    id="cityInput"
+                    maxlength="70"
+                    placeholder="예: 제주도 서귀포"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="categorySelect"
+                    ><i class="fa-solid fa-shapes" aria-hidden="true"></i> 여행
+                    유형</label
+                  >
+                  <select id="categorySelect" required>
+                    <option value="캠핑장">캠핑</option>
+                    <option value="국내여행">국내 여행</option>
+                    <option value="해외여행">해외 여행</option>
+                    <option value="맛집">맛집</option>
+                    <option value="기타">기타</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="targetDate"
+                    ><i
+                      class="fa-regular fa-calendar-days"
+                      aria-hidden="true"
+                    ></i>
+                    여행 예정일</label
+                  >
+                  <input type="date" id="targetDate" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="placeName"
+                  ><i class="fa-solid fa-bookmark" aria-hidden="true"></i> 장소
+                  이름</label
+                >
+                <input
+                  type="text"
+                  id="placeName"
+                  maxlength="120"
+                  placeholder="예: 바다가 보이는 캠핑장"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="memoContent"
+                  ><i class="fa-solid fa-pen" aria-hidden="true"></i>
+                  메모</label
+                >
+                <textarea
+                  id="memoContent"
+                  rows="3"
+                  maxlength="1000"
+                  placeholder="준비물, 가고 싶은 곳, 여행 아이디어를 적어보세요."
+                ></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="saveBtn">
+                  <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                  장소 저장하기
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  id="cancelBtn"
+                  hidden
+                >
+                  취소
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="glass-card" aria-labelledby="places-title">
+            <div class="card-title-between">
+              <div class="card-title">
+                <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                <h2 id="places-title">나의 여행 리스트</h2>
+              </div>
+              <span class="badge" id="placeCountBadge" aria-live="polite"
+                >0개 장소</span
+              >
+            </div>
+
+            <div class="filter-wrapper">
+              <label class="sr-only" for="searchInput">여행 장소 검색</label>
+              <div class="search-filter-box">
+                <i
+                  class="fa-solid fa-magnifying-glass search-icon"
+                  aria-hidden="true"
+                ></i>
+                <input
+                  type="search"
+                  id="searchInput"
+                  placeholder="장소, 도시, 날짜, 여행 유형, 메모 검색..."
+                  autocomplete="off"
+                />
+              </div>
+              <div
+                class="category-tabs"
+                role="group"
+                aria-label="여행 유형 필터"
+              >
+                <button
+                  type="button"
+                  class="cat-btn active"
+                  data-category="ALL"
+                  aria-pressed="true"
+                >
+                  전체
+                </button>
+                <button
+                  type="button"
+                  class="cat-btn"
+                  data-category="캠핑장"
+                  aria-pressed="false"
+                >
+                  캠핑
+                </button>
+                <button
+                  type="button"
+                  class="cat-btn"
+                  data-category="국내여행"
+                  aria-pressed="false"
+                >
+                  국내 여행
+                </button>
+                <button
+                  type="button"
+                  class="cat-btn"
+                  data-category="해외여행"
+                  aria-pressed="false"
+                >
+                  해외 여행
+                </button>
+                <button
+                  type="button"
+                  class="cat-btn"
+                  data-category="맛집"
+                  aria-pressed="false"
+                >
+                  맛집
+                </button>
+                <button
+                  type="button"
+                  class="cat-btn"
+                  data-category="기타"
+                  aria-pressed="false"
+                >
+                  기타
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="log-list-container"
+              id="placeList"
+              aria-live="polite"
+            ></div>
+          </section>
+        </div>
+
+        <section class="glass-card todo-section" aria-labelledby="todo-title">
+          <div class="card-title-between">
+            <div class="card-title">
+              <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+              <h2 id="todo-title">오늘 할 일</h2>
+            </div>
+            <span class="badge" id="todoCountBadge" aria-live="polite">0개 남음</span>
+          </div>
+
+          <form id="todoForm" class="todo-form">
+            <input type="hidden" id="todoEditId" value="" />
+            <div class="todo-form-main">
+              <div class="form-group">
+                <label for="todoTitle">할 일</label>
+                <input id="todoTitle" type="text" maxlength="120" placeholder="예: 캠핑 장비 점검하기" required />
+              </div>
+              <div class="form-group">
+                <label for="todoPriority">우선순위</label>
+                <select id="todoPriority">
+                  <option value="보통">보통</option>
+                  <option value="높음">높음</option>
+                  <option value="낮음">낮음</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="todoMemo">메모 (선택)</label>
+              <input id="todoMemo" type="text" maxlength="240" placeholder="준비물이나 간단한 메모" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="todoSaveButton">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i> 할 일 추가
+              </button>
+              <button type="button" class="btn btn-secondary" id="todoCancelButton" hidden>취소</button>
+            </div>
+          </form>
+
+          <ul class="todo-list" id="todoList" aria-live="polite"></ul>
+        </section>
+
+        <section
+          class="glass-card sponsor-section"
+          aria-labelledby="sponsor-title"
+        >
+          <div class="card-title">
+            <i class="fa-solid fa-plane-departure" aria-hidden="true"></i>
+            <h2 id="sponsor-title">다음 여정을 위한 파트너</h2>
+          </div>
+          <p class="sponsor-desc">
+            항공권부터 현지 투어까지, 공식 사이트에서 여행을 준비해 보세요.
+          </p>
+          <div class="sponsor-grid">
+            <a
+              href="https://www.koreanair.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card Koreanair"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-plane" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">대한항공</span
+                ><span class="brand-sub">Korean Air · 항공권</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+            <a
+              href="https://flyasiana.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card asiana"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-plane-up" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">아시아나항공</span
+                ><span class="brand-sub">Asiana Airlines · 항공권</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+            <a
+              href="https://www.hanatour.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card hanatour"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-suitcase-rolling" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">하나투어</span
+                ><span class="brand-sub">패키지 · 자유여행</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+            <a
+              href="https://www.modetour.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card modetour"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-earth-asia" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">모두투어</span
+                ><span class="brand-sub">여행 패키지</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+            <a
+              href="https://www.myrealtrip.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card myrealtrip"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-ticket" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">마이리얼트립</span
+                ><span class="brand-sub">투어 · 티켓 · 액티비티</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+            <a
+              href="https://kr.trip.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="sponsor-card tripcom"
+            >
+              <span class="brand-icon"
+                ><i class="fa-solid fa-hotel" aria-hidden="true"></i
+              ></span>
+              <span class="brand-info"
+                ><span class="brand-name">트립닷컴</span
+                ><span class="brand-sub">항공 · 호텔 예약</span></span
+              >
+              <i
+                class="fa-solid fa-arrow-up-right-from-square external-link"
+                aria-hidden="true"
+              ></i>
+            </a>
+          </div>
+          <p class="sponsor-disclaimer">
+            각 링크는 해당 여행사·항공사의 공식 웹사이트로 이동합니다.
+          </p>
+        </section>
+
+        <footer class="site-footer">
+          <span>WEATH WAY · 날씨를 따라 떠나는 여정...</span>
+          <a href="api.html"
+            >날씨와 캠핑장 둘러보기
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i
+          ></a>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
